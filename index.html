@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curriculum Manager</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f9f8f6; }
+    #app { background: white; min-height: 100vh; padding: 1.5rem; }
+    .app-header { margin-bottom: 1.5rem; max-width: 1200px; margin-left: auto; margin-right: auto; }
+    .app-title { font-size: 24px; font-weight: 500; margin: 0 0 0.25rem; color: #2c2c2a; }
+    .app-subtitle { font-size: 13px; color: #888780; margin: 0 0 1rem; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .controls button { padding: 6px 12px; font-size: 13px; border: 0.5px solid #d3d1c7; background: white; border-radius: 6px; cursor: pointer; }
+    .controls button:hover { background: #f1efe8; }
+    .table-wrapper { max-width: 1200px; margin: 0 auto; overflow-x: auto; border: 0.5px solid #d3d1c7; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f1efe8; padding: 10px 12px; text-align: left; font-weight: 500; border-bottom: 0.5px solid #d3d1c7; text-transform: uppercase; letter-spacing: 0.3px; color: #888780; font-size: 12px; }
+    td { padding: 10px 12px; border-bottom: 0.5px solid #d3d1c7; }
+    tbody tr:hover { background: #f9f8f6; }
+    .course-code { font-weight: 500; color: #2c2c2a; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 3px; font-size: 11px; font-weight: 500; text-transform: uppercase; white-space: nowrap; }
+    .status-new { background: #e6f1fb; color: #185fa5; }
+    .status-review { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-ready { background: #d1ecf1; color: #0c5460; }
+    .status-nochange { background: #f1efe8; color: #5f5e5a; }
+    .edit-indicator { display: inline-block; width: 6px; height: 6px; background: #d85a30; border-radius: 50%; margin-right: 6px; }
+    .action-btn { background: transparent; border: none; color: #5f5e5a; cursor: pointer; padding: 2px 6px; font-size: 12px; }
+    .action-btn:hover { color: #2c2c2a; text-decoration: underline; }
+    .course-detail { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .detail-modal { background: white; border-radius: 12px; width: 90vw; max-width: 800px; max-height: 85vh; overflow-y: auto; padding: 2rem; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-title { font-size: 20px; font-weight: 500; margin: 0; color: #2c2c2a; }
+    .close-btn { background: transparent; border: none; font-size: 24px; cursor: pointer; color: #888780; }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 0.5rem; color: #2c2c2a; text-transform: uppercase; letter-spacing: 0.3px; }
+    .form-field { width: 100%; padding: 8px 12px; border: 0.5px solid #d3d1c7; border-radius: 6px; font-size: 14px; font-family: inherit; }
+    .form-field:focus { outline: none; border-color: #378add; background: #e6f1fb; }
+    textarea.form-field { min-height: 80px; resize: vertical; font-size: 13px; }
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
+    .comparison-panel { padding: 1rem; background: #f1efe8; border-radius: 6px; }
+    .comparison-label { font-size: 11px; font-weight: 500; color: #888780; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.3px; }
+    .comparison-value { font-size: 13px; color: #2c2c2a; line-height: 1.6; }
+    .change-added { background: #e8f5e9; }
+    .history-item { border-left: 2px solid #d3d1c7; padding-left: 12px; margin-bottom: 1rem; padding-bottom: 1rem; }
+    .history-time { font-size: 11px; color: #888780; }
+    .history-user { font-size: 13px; font-weight: 500; color: #2c2c2a; }
+    .history-action { font-size: 12px; color: #888780; margin-top: 0.25rem; }
+    .tabs { display: flex; gap: 1rem; border-bottom: 0.5px solid #d3d1c7; margin-bottom: 1.5rem; }
+    .tab { padding: 0.75rem 0; border-bottom: 2px solid transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #888780; }
+    .tab.active { color: #2c2c2a; border-bottom-color: #2c2c2a; }
+    .button-group { display: flex; gap: 8px; margin-top: 1.5rem; }
+    button { padding: 8px 12px; font-size: 13px; border: 0.5px solid #d3d1c7; border-radius: 6px; background: white; color: #2c2c2a; cursor: pointer; }
+    button:hover { background: #f1efe8; }
+    .user-badge { display: inline-block; background: #e6f1fb; color: #185fa5; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-header">
+    <h1 class="app-title">Curriculum Catalog</h1>
+    <p class="app-subtitle">Course review and approval workflow</p>
+    <div class="controls">
+      <button onclick="handleAddCourse()">+ Add course</button>
+      <button onclick="handleExportData()">Export CSV</button>
+      <button onclick="handleFilter('all')">All courses</button>
+      <button onclick="handleFilter('pending')">Pending review</button>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Course name</th>
+          <th>Title</th>
+          <th>Rotation</th>
+          <th>Status</th>
+          <th style="width: 60px;">Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div id="detail"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'curriculum_courses';
+const USERS = ['You', 'Dr. Smith', 'Dr. Johnson', 'Dr. Lee'];
+let currentUser = USERS[0];
+let courses = [];
+let currentFilter = 'all';
+
+async function loadData() {
+  try {
+    const result = await window.storage.get(STORAGE_KEY);
+    if (result?.value) courses = JSON.parse(result.value);
+    else initializeSampleData();
+  } catch {
+    initializeSampleData();
+  }
+  render();
+}
+
+function initializeSampleData() {
+  courses = [
+    { id: '1', prefix: 'DES', number: '101', name: 'Intro to Graphic Design', title: 'Foundations', description: 'Basic principles of visual communication and design thinking.', outcomes: ['Understand design process', 'Apply visual hierarchy', 'Create design comps'], rotation: 'Fall, Spring', status: 'approved', history: [{user: 'Dr. Smith', action: 'approved', date: '2024-01-15', timestamp: Date.now() - 86400000 * 30}], suggested: null },
+    { id: '2', prefix: 'DES', number: '210', name: 'Web Design', title: 'Digital Interfaces', description: 'Design for digital platforms and user interfaces.', outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics'], rotation: 'Spring', status: 'review', history: [{user: 'You', action: 'submitted edits', date: '2024-03-20', timestamp: Date.now() - 86400000 * 5}], suggested: {description: 'Design for digital platforms, interactive experiences, and user interfaces.', outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics', 'Test user interfaces']} },
+    { id: '3', prefix: 'DES', number: '301', name: 'Advanced Typography', title: 'Letterform & Systems', description: 'Explore type as a design system. History, classification, and contemporary applications.', outcomes: ['Analyze typeface systems', 'Apply type to branding', 'Critique letterforms'], rotation: 'Fall', status: 'approved', history: [{user: 'Dr. Lee', action: 'approved', date: '2023-08-10', timestamp: Date.now() - 86400000 * 200}], suggested: null },
+    { id: '4', prefix: 'DES', number: '305', name: 'Data Visualization', title: 'Visual Storytelling with Data', description: 'Design interactive and static data visualizations.', outcomes: ['Create data visualizations', 'Understand visualization grammar', 'Code D3 basics'], rotation: 'Spring', status: 'new', history: [{user: 'You', action: 'created', date: '2024-03-22', timestamp: Date.now() - 86400000 * 3}], suggested: null }
+  ];
+  saveData();
+}
+
+async function saveData() {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(courses));
+  } catch (e) {
+    console.error('Save failed:', e);
+  }
+}
+
+function findCourse(id) {
+  return courses.find(c => c.id === id);
+}
+
+function render() {
+  const tbody = document.getElementById('tableBody');
+  let filtered = courses;
+  if (currentFilter === 'pending') filtered = courses.filter(c => c.status === 'review' || c.status === 'new');
+  tbody.innerHTML = filtered.map(c => `<tr><td class="course-code">${c.prefix} ${c.number}</td><td>${c.suggested ? '<span class="edit-indicator"></span>' : ''}${c.name}</td><td>${c.title}</td><td>${c.rotation}</td><td><span class="status-badge status-${c.status}">${c.status.replace(/([A-Z])/g, ' $1').trim()}</span></td><td><button class="action-btn" onclick="showDetail('${c.id}')">View</button></td></tr>`).join('');
+}
+
+function showDetail(courseId) {
+  const course = findCourse(courseId);
+  if (!course) return;
+  const container = document.getElementById('detail');
+  const hasSuggested = course.suggested !== null;
+  container.innerHTML = `<div class="course-detail" onclick="if(event.target === this) closeDetail()"><div class="detail-modal"><div class="modal-header"><div><h2 class="modal-title">${course.prefix} ${course.number}: ${course.name}</h2></div><button class="close-btn" onclick="closeDetail()">×</button></div><div class="tabs"><div class="tab active" onclick="switchTab(event, '${courseId}', 'current')">Current</div>${hasSuggested ? `<div class="tab" onclick="switchTab(event, '${courseId}', 'suggested')">Suggested edits</div>` : ''}<div class="tab" onclick="switchTab(event, '${courseId}', 'history')">History</div></div><div id="currentTab-${courseId}"><div class="form-group"><label class="form-label">Title</label><input type="text" class="form-field" value="${course.title}" readonly></div><div class="form-group"><label class="form-label">Description</label><textarea class="form-field" readonly>${course.description}</textarea></div><div class="form-group"><label class="form-label">Learning outcomes</label><textarea class="form-field" readonly>${course.outcomes.join('\n')}</textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" class="form-field" value="${course.rotation}" readonly></div><div class="button-group">${course.status !== 'review' ? `<button onclick="editCourse('${courseId}')">Suggest edit</button>` : ''}<button onclick="closeDetail()" style="background: transparent;">Close</button></div></div>${hasSuggested ? `<div id="suggestedTab-${courseId}" style="display:none;"><p style="font-size: 13px; color: #888780; margin: 0 0 1rem;">Review proposed changes below.</p><div class="comparison"><div class="comparison-panel"><div class="comparison-label">Current</div><div class="comparison-value">${course.description}</div></div><div class="comparison-panel change-added"><div class="comparison-label">Suggested</div><div class="comparison-value">${course.suggested.description}</div></div></div><div class="button-group"><button onclick="approveSuggestion('${courseId}')">Approve</button><button onclick="denySuggestion('${courseId}')">Deny</button></div></div>` : ''}<div id="historyTab-${courseId}" style="display:none;">${course.history.map(h => `<div class="history-item"><div class="history-time">${new Date(h.timestamp).toLocaleDateString()}</div><div class="history-user"><span class="user-badge">${h.user}</span></div><div class="history-action">${h.action}</div></div>`).join('')}</div></div></div>`;
+}
+
+function switchTab(event, courseId, tab) {
+  document.querySelectorAll(`[id$="Tab-${courseId}"]`).forEach(el => el.style.display = 'none');
+  document.getElementById(`${tab}Tab-${courseId}`).style.display = 'block';
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function editCourse(courseId) {
+  const course = findCourse(courseId);
+  const modal = document.querySelector('.detail-modal');
+  modal.innerHTML = `<div class="modal-header"><h2 class="modal-title">Suggest changes to ${course.prefix} ${course.number}</h2><button class="close-btn" onclick="closeDetail()">×</button></div><form onsubmit="saveSuggestion('${courseId}', event)"><div class="form-group"><label class="form-label">Description</label><textarea name="description" class="form-field" required>${course.description}</textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea name="outcomes" class="form-field" required>${course.outcomes.join('\n')}</textarea></div><div class="button-group"><button type="submit">Submit</button><button type="button" onclick="closeDetail()" style="background: transparent;">Cancel</button></div></form>`;
+}
+
+function saveSuggestion(courseId, e) {
+  e.preventDefault();
+  const course = findCourse(courseId);
+  const formData = new FormData(e.target);
+  course.suggested = { description: formData.get('description'), outcomes: formData.get('outcomes').split('\n').map(o => o.trim()).filter(o => o) };
+  course.status = 'review';
+  course.history.push({user: currentUser, action: 'suggested edits', date: new Date().toLocaleDateString(), timestamp: Date.now()});
+  saveData();
+  closeDetail();
+  render();
+}
+
+function approveSuggestion(courseId) {
+  const course = findCourse(courseId);
+  if (course.suggested) {
+    course.description = course.suggested.description;
+    course.outcomes = course.suggested.outcomes;
+    course.suggested = null;
+    course.status = 'approved';
+    course.history.push({user: currentUser, action: 'approved changes', date: new Date().toLocaleDateString(), timestamp: Date.now()});
+    saveData();
+    closeDetail();
+    render();
+  }
+}
+
+function denySuggestion(courseId) {
+  const course = findCourse(courseId);
+  if (course.suggested) {
+    course.suggested = null;
+    course.status = 'approved';
+    course.history.push({user: currentUser, action: 'denied changes', date: new Date().toLocaleDateString(), timestamp: Date.now()});
+    saveData();
+    closeDetail();
+    render();
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail').innerHTML = '';
+}
+
+function handleAddCourse() {
+  alert('Feature: Add course manually for now');
+}
+
+function handleExportData() {
+  const csv = [['Prefix', 'Number', 'Name', 'Title', 'Description', 'Rotation', 'Status']];
+  csv.push(...courses.map(c => [c.prefix, c.number, c.name, c.title, c.description, c.rotation, c.status]));
+  const blob = new Blob([csv.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n')], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'curriculum.csv';
+  a.click();
+}
+
+function handleFilter(filter) {
+  currentFilter = filter;
+  render();
+}
+
+loadData();
+</script>
+</body>
+</html>
