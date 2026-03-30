@@ -93,6 +93,7 @@
     </div>
     <div class="controls">
       <button onclick="openAddCourseModal()">+ Add course</button>
+      <button onclick="openImportModal()">Import CSV</button>
       <button onclick="handleExportData()">Export CSV</button>
       <button onclick="handleFilter('all')">All courses</button>
       <button onclick="handleFilter('pending')">Pending review</button>
@@ -151,9 +152,9 @@ function changeUser() {
 
 function initializeSampleData() {
   courses = [
-    { id: '1', prefix: 'DES', number: '101', name: 'Intro to Graphic Design', description: 'Basic principles of visual communication and design thinking.', outcomes: ['Understand design process', 'Apply visual hierarchy', 'Create design comps'], rotation: 'Fall, Spring', status: 'approved', programs: ['Major: Graphic Design', 'Minor: Visual Arts'], history: [{user: 'Dr. Smith', action: 'approved', timestamp: Date.now() - 86400000 * 30}], suggested: [] },
-    { id: '2', prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms and user interfaces.', outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics'], rotation: 'Spring', status: 'review', programs: ['Major: Graphic Design'], history: [{user: 'You', action: 'submitted edits', timestamp: Date.now() - 86400000 * 5}], suggested: [{prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms, interactive experiences, and user interfaces.', outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics', 'Test user interfaces'], rotation: 'Spring', user: 'You', timestamp: Date.now() - 86400000 * 5, justification: 'Adding user testing outcome to better align with modern UX practices.', comments: [{user: 'Dr. Smith', text: 'Good addition of user testing outcome.', timestamp: Date.now() - 86400000 * 4}]}] },
-    { id: '3', prefix: 'DES', number: '301', name: 'Advanced Typography', description: 'Explore type as a design system. History, classification, and contemporary applications.', outcomes: ['Analyze typeface systems', 'Apply type to branding', 'Critique letterforms'], rotation: 'Fall', status: 'approved', programs: ['Major: Graphic Design'], history: [{user: 'Dr. Lee', action: 'approved', timestamp: Date.now() - 86400000 * 200}], suggested: [] }
+    { id: '1', prefix: 'DES', number: '101', name: 'Intro to Graphic Design', description: 'Basic principles of visual communication and design thinking.', credits: 3, outcomes: ['Understand design process', 'Apply visual hierarchy', 'Create design comps'], rotation: 'Fall, Spring', status: 'approved', programs: ['Major: Graphic Design', 'Minor: Visual Arts'], history: [{user: 'Dr. Smith', action: 'approved', timestamp: Date.now() - 86400000 * 30}], suggested: [] },
+    { id: '2', prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms and user interfaces.', credits: 4, outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics'], rotation: 'Spring', status: 'review', programs: ['Major: Graphic Design'], history: [{user: 'You', action: 'submitted edits', timestamp: Date.now() - 86400000 * 5}], suggested: [{prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms, interactive experiences, and user interfaces.', credits: 4, outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics', 'Test user interfaces'], rotation: 'Spring', user: 'You', timestamp: Date.now() - 86400000 * 5, justification: 'Adding user testing outcome to better align with modern UX practices.', comments: [{user: 'Dr. Smith', text: 'Good addition of user testing outcome.', timestamp: Date.now() - 86400000 * 4}]}] },
+    { id: '3', prefix: 'DES', number: '301', name: 'Advanced Typography', description: 'Explore type as a design system. History, classification, and contemporary applications.', credits: 3, outcomes: ['Analyze typeface systems', 'Apply type to branding', 'Critique letterforms'], rotation: 'Fall', status: 'approved', programs: ['Major: Graphic Design'], history: [{user: 'Dr. Lee', action: 'approved', timestamp: Date.now() - 86400000 * 200}], suggested: [] }
   ];
   saveData();
 }
@@ -204,7 +205,7 @@ function showDetail(courseId) {
   const container = document.getElementById('detail');
   const commentsHtml = (sugg, idx) => `<div style="background: white; border: 0.5px solid #d3d1c7; border-radius: 6px; padding: 1rem; margin-top: 1rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; margin-bottom: 0.75rem; font-weight: 500;">Comments (${sugg.comments ? sugg.comments.length : 0})</div>${sugg.comments && sugg.comments.length > 0 ? sugg.comments.map(c => `<div style="padding: 0.75rem 0; border-bottom: 0.5px solid #f1efe8;"><div><span class="user-badge">${c.user}</span> <span style="font-size: 11px; color: #888780;">${new Date(c.timestamp).toLocaleDateString()}</span></div><div style="margin-top: 0.5rem; font-size: 13px; color: #2c2c2a;">${c.text}</div></div>`).join('') : '<div style="color: #888780; font-size: 13px;">No comments yet</div>'}<div style="margin-top: 0.75rem;"><input type="text" id="comment-${courseId}-${idx}" class="form-field" placeholder="Add a comment..." style="font-size: 13px;"><button onclick="addComment('${courseId}', ${idx})" style="margin-top: 0.5rem; padding: 6px 12px; font-size: 12px;">Post comment</button></div></div>`;
   
-  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><div><h2 class="modal-title">${course.prefix} ${course.number}: ${course.name}</h2></div><button class="close-btn" onclick="closeDetail()">×</button></div><div class="tabs"><div class="tab active" onclick="switchTab(event, '${courseId}', 'current')">Edit</div>${course.suggested.length > 0 ? `<div class="tab" onclick="switchTab(event, '${courseId}', 'suggested')">Pending suggestions (${course.suggested.length})</div>` : ''}<div class="tab" onclick="switchTab(event, '${courseId}', 'history')">History</div></div><div id="currentTab-${courseId}"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"><div class="form-group"><label class="form-label">Prefix</label><input type="text" id="editPrefix-${courseId}" class="form-field" value="${course.prefix}" maxlength="4"></div><div class="form-group"><label class="form-label">Number</label><input type="text" id="editNumber-${courseId}" class="form-field" value="${course.number}" maxlength="4"></div></div><div class="form-group"><label class="form-label">Course name</label><input type="text" id="editName-${courseId}" class="form-field" value="${course.name}"></div><div class="form-group"><label class="form-label">Description</label><textarea id="editDescription-${courseId}" class="form-field">${course.description}</textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea id="editOutcomes-${courseId}" class="form-field">${course.outcomes.join('\n')}</textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" id="editRotation-${courseId}" class="form-field" value="${course.rotation}"></div><div class="form-group"><label class="form-label">Programs containing this course</label><div id="programsList-${courseId}" style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 0.5rem; min-height: 60px;">${course.programs && course.programs.length > 0 ? `<ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.programs.map((p, i) => `<li style="margin-bottom: 0.5rem;">${p} <button onclick="removeProgram('${courseId}', ${i})" style="background: transparent; color: #a32d2d; border: none; cursor: pointer; padding: 0; font-size: 12px; margin-left: 0.5rem;">remove</button></li>`).join('')}</ul>` : '<div style="color: #888780; font-size: 13px;">No programs linked yet</div>'}</div><div style="display: flex; gap: 8px;"><input type="text" id="newProgram-${courseId}" class="form-field" placeholder="e.g., Major: Graphic Design" style="flex: 1;"><button onclick="addProgram('${courseId}')" style="padding: 6px 12px; font-size: 12px;">Add program</button></div><div style="font-size: 12px; color: #888780; margin-top: 0.5rem;">Note: Detailed program management is coming in a future update</div></div><div class="button-group"><button onclick="submitEditSuggestion('${courseId}')">Save as suggestion</button><button class="button-transparent" onclick="closeDetail()">Close</button></div></div></div>${course.suggested.length > 0 ? `<div id="suggestedTab-${courseId}" style="display:none;"><p style="font-size: 13px; color: #888780; margin: 0 0 1rem;">Pending suggestions from committee members. Approve individual suggestions or deny them.</p>${course.suggested.map((sugg, idx) => `<div class="suggestion-item"><div class="suggestion-header"><div><span class="user-badge">${sugg.user}</span><span class="suggestion-meta" style="margin-left: 8px;">${new Date(sugg.timestamp).toLocaleDateString()} at ${new Date(sugg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div></div>${sugg.justification ? `<div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 500;">Justification</div><div style="font-size: 13px; color: #2c2c2a;">${sugg.justification}</div></div>` : ''}<div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Changed fields</div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 13px;">${getChangedFields(course, sugg).map(field => `<div style="margin-bottom: 0.5rem;"><strong>${field.label}:</strong> "${field.old}" → "${field.new}"</div>`).join('')}</div></div><div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Full description comparison</div><div class="comparison"><div class="comparison-panel"><div class="comparison-value">${course.description}</div></div><div class="comparison-panel suggested"><div class="comparison-value">${sugg.description}</div></div></div></div><div><div style="font-size: 12px; color: #888780; margin: 1rem 0 0.5rem 0; text-transform: uppercase; font-weight: 500;">Learning outcomes</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;"><div style="padding: 1rem; background: #f1efe8; border-radius: 6px;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div><div style="padding: 1rem; background: #e8f5e9; border-radius: 6px; border-left: 3px solid #155724;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${sugg.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div></div></div>${commentsHtml(sugg, idx)}<div class="suggestion-buttons"><button onclick="approveSuggestion('${courseId}', ${idx})">Approve</button><button class="danger" onclick="openDenyModal('${courseId}', ${idx})">Deny</button></div></div>`).join('')}</div>` : ''}<div id="historyTab-${courseId}" style="display:none;">${course.history.map(h => `<div class="history-item"><div class="history-time">${new Date(h.timestamp).toLocaleDateString()}</div><div class="history-user"><span class="user-badge">${h.user}</span></div><div class="history-action">${h.action}</div></div>`).join('')}</div></div></div>`;
+  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><div><h2 class="modal-title">${course.prefix} ${course.number}: ${course.name}</h2></div><button class="close-btn" onclick="closeDetail()">×</button></div><div class="tabs"><div class="tab active" onclick="switchTab(event, '${courseId}', 'current')">Edit</div>${course.suggested.length > 0 ? `<div class="tab" onclick="switchTab(event, '${courseId}', 'suggested')">Pending suggestions (${course.suggested.length})</div>` : ''}<div class="tab" onclick="switchTab(event, '${courseId}', 'history')">History</div></div><div id="currentTab-${courseId}"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"><div class="form-group"><label class="form-label">Prefix</label><input type="text" id="editPrefix-${courseId}" class="form-field" value="${course.prefix}" maxlength="4"></div><div class="form-group"><label class="form-label">Number</label><input type="text" id="editNumber-${courseId}" class="form-field" value="${course.number}" maxlength="4"></div></div><div class="form-group"><label class="form-label">Course name</label><input type="text" id="editName-${courseId}" class="form-field" value="${course.name}"></div><div class="form-group"><label class="form-label">Credits</label><input type="number" id="editCredits-${courseId}" class="form-field" value="${course.credits || ''}" min="1" max="6"></div><div class="form-group"><label class="form-label">Description</label><textarea id="editDescription-${courseId}" class="form-field">${course.description}</textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea id="editOutcomes-${courseId}" class="form-field">${course.outcomes.join('\n')}</textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" id="editRotation-${courseId}" class="form-field" value="${course.rotation}"></div><div class="form-group"><label class="form-label">Programs containing this course</label><div id="programsList-${courseId}" style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 0.5rem; min-height: 60px;">${course.programs && course.programs.length > 0 ? `<ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.programs.map((p, i) => `<li style="margin-bottom: 0.5rem;">${p} <button onclick="removeProgram('${courseId}', ${i})" style="background: transparent; color: #a32d2d; border: none; cursor: pointer; padding: 0; font-size: 12px; margin-left: 0.5rem;">remove</button></li>`).join('')}</ul>` : '<div style="color: #888780; font-size: 13px;">No programs linked yet</div>'}</div><div style="display: flex; gap: 8px;"><input type="text" id="newProgram-${courseId}" class="form-field" placeholder="e.g., Major: Graphic Design" style="flex: 1;"><button onclick="addProgram('${courseId}')" style="padding: 6px 12px; font-size: 12px;">Add program</button></div><div style="font-size: 12px; color: #888780; margin-top: 0.5rem;">Note: Detailed program management is coming in a future update</div></div><div class="button-group"><button onclick="submitEditSuggestion('${courseId}')">Save as suggestion</button><button class="button-transparent" onclick="closeDetail()">Close</button></div></div></div>${course.suggested.length > 0 ? `<div id="suggestedTab-${courseId}" style="display:none;"><p style="font-size: 13px; color: #888780; margin: 0 0 1rem;">Pending suggestions from committee members. Approve individual suggestions or deny them.</p>${course.suggested.map((sugg, idx) => `<div class="suggestion-item"><div class="suggestion-header"><div><span class="user-badge">${sugg.user}</span><span class="suggestion-meta" style="margin-left: 8px;">${new Date(sugg.timestamp).toLocaleDateString()} at ${new Date(sugg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div></div>${sugg.justification ? `<div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 500;">Justification</div><div style="font-size: 13px; color: #2c2c2a;">${sugg.justification}</div></div>` : ''}<div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Changed fields</div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 13px;">${getChangedFields(course, sugg).map(field => `<div style="margin-bottom: 0.5rem;"><strong>${field.label}:</strong> "${field.old}" → "${field.new}"</div>`).join('')}</div></div><div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Full description comparison</div><div class="comparison"><div class="comparison-panel"><div class="comparison-value">${course.description}</div></div><div class="comparison-panel suggested"><div class="comparison-value">${sugg.description}</div></div></div></div><div><div style="font-size: 12px; color: #888780; margin: 1rem 0 0.5rem 0; text-transform: uppercase; font-weight: 500;">Learning outcomes</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;"><div style="padding: 1rem; background: #f1efe8; border-radius: 6px;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div><div style="padding: 1rem; background: #e8f5e9; border-radius: 6px; border-left: 3px solid #155724;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${sugg.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div></div></div>${commentsHtml(sugg, idx)}<div class="suggestion-buttons"><button onclick="approveSuggestion('${courseId}', ${idx})">Approve</button><button class="danger" onclick="openDenyModal('${courseId}', ${idx})">Deny</button></div></div>`).join('')}</div>` : ''}<div id="historyTab-${courseId}" style="display:none;">${course.history.map(h => `<div class="history-item"><div class="history-time">${new Date(h.timestamp).toLocaleDateString()}</div><div class="history-user"><span class="user-badge">${h.user}</span></div><div class="history-action">${h.action}</div></div>`).join('')}</div></div></div>`;
   document.getElementById('detailOverlay').addEventListener('mouseup', (e) => {
     if (!mouseDownInModal && e.target.id === 'detailOverlay') closeDetail();
   });
@@ -214,11 +215,12 @@ function submitEditSuggestion(courseId) {
   const prefix = document.getElementById(`editPrefix-${courseId}`).value.trim();
   const number = document.getElementById(`editNumber-${courseId}`).value.trim();
   const name = document.getElementById(`editName-${courseId}`).value.trim();
+  const credits = document.getElementById(`editCredits-${courseId}`).value.trim();
   const description = document.getElementById(`editDescription-${courseId}`).value.trim();
   const outcomes = document.getElementById(`editOutcomes-${courseId}`).value.trim();
   const rotation = document.getElementById(`editRotation-${courseId}`).value.trim();
   
-  if (!prefix || !number || !name || !description || !outcomes || !rotation) {
+  if (!prefix || !number || !name || !credits || !description || !outcomes || !rotation) {
     alert('Please fill in all fields');
     return;
   }
@@ -228,6 +230,7 @@ function submitEditSuggestion(courseId) {
     prefix: prefix.toUpperCase(),
     number: number,
     name: name,
+    credits: parseInt(credits),
     description: description,
     outcomes: outcomes.split('\n').map(o => o.trim()).filter(o => o),
     rotation: rotation,
@@ -372,6 +375,7 @@ function approveSuggestion(courseId, idx) {
   course.prefix = sugg.prefix;
   course.number = sugg.number;
   course.name = sugg.name;
+  course.credits = sugg.credits;
   course.description = sugg.description;
   course.outcomes = sugg.outcomes;
   course.rotation = sugg.rotation;
@@ -401,7 +405,7 @@ function closeDetail() {
 
 function openAddCourseModal() {
   const container = document.getElementById('detail');
-  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><h2 class="modal-title">Add new course</h2><button class="close-btn" onclick="closeDetail()">×</button></div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"><div class="form-group"><label class="form-label">Prefix</label><input type="text" id="addPrefix" class="form-field" placeholder="e.g., DES" maxlength="4"></div><div class="form-group"><label class="form-label">Number</label><input type="text" id="addNumber" class="form-field" placeholder="e.g., 101" maxlength="4"></div></div><div class="form-group"><label class="form-label">Course name</label><input type="text" id="addName" class="form-field" placeholder="e.g., Intro to Graphic Design"></div><div class="form-group"><label class="form-label">Description</label><textarea id="addDescription" class="form-field" placeholder="What is this course about?"></textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea id="addOutcomes" class="form-field" placeholder="Students will be able to...&#10;Students will understand..."></textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" id="addRotation" class="form-field" placeholder="e.g., Fall, Spring"></div><div class="button-group"><button onclick="submitAddCourse()">Create course</button><button class="button-transparent" onclick="closeDetail()">Cancel</button></div></div></div>`;
+  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><h2 class="modal-title">Add new course</h2><button class="close-btn" onclick="closeDetail()">×</button></div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"><div class="form-group"><label class="form-label">Prefix</label><input type="text" id="addPrefix" class="form-field" placeholder="e.g., DES" maxlength="4"></div><div class="form-group"><label class="form-label">Number</label><input type="text" id="addNumber" class="form-field" placeholder="e.g., 101" maxlength="4"></div></div><div class="form-group"><label class="form-label">Course name</label><input type="text" id="addName" class="form-field" placeholder="e.g., Intro to Graphic Design"></div><div class="form-group"><label class="form-label">Credits</label><input type="number" id="addCredits" class="form-field" placeholder="e.g., 3" min="1" max="6"></div><div class="form-group"><label class="form-label">Description</label><textarea id="addDescription" class="form-field" placeholder="What is this course about?"></textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea id="addOutcomes" class="form-field" placeholder="Students will be able to...&#10;Students will understand..."></textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" id="addRotation" class="form-field" placeholder="e.g., Fall, Spring"></div><div class="button-group"><button onclick="submitAddCourse()">Create course</button><button class="button-transparent" onclick="closeDetail()">Cancel</button></div></div></div>`;
   document.getElementById('detailOverlay').addEventListener('mouseup', (e) => {
     if (!mouseDownInModal && e.target.id === 'detailOverlay') closeDetail();
   });
@@ -411,11 +415,12 @@ function submitAddCourse() {
   const prefix = document.getElementById('addPrefix').value.trim();
   const number = document.getElementById('addNumber').value.trim();
   const name = document.getElementById('addName').value.trim();
+  const credits = document.getElementById('addCredits').value.trim();
   const description = document.getElementById('addDescription').value.trim();
   const outcomes = document.getElementById('addOutcomes').value.trim();
   const rotation = document.getElementById('addRotation').value.trim();
   
-  if (!prefix || !number || !name || !description || !outcomes || !rotation) {
+  if (!prefix || !number || !name || !credits || !description || !outcomes || !rotation) {
     alert('Please fill in all fields');
     return;
   }
@@ -425,6 +430,7 @@ function submitAddCourse() {
     prefix: prefix.toUpperCase(),
     number: number,
     name: name,
+    credits: parseInt(credits),
     description: description,
     outcomes: outcomes.split('\n').map(o => o.trim()).filter(o => o),
     rotation: rotation,
@@ -440,10 +446,106 @@ function submitAddCourse() {
   render();
 }
 
+function openImportModal() {
+  const container = document.getElementById('detail');
+  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><h2 class="modal-title">Import courses from CSV</h2><button class="close-btn" onclick="closeDetail()">×</button></div><div class="form-group"><label class="form-label">CSV File</label><input type="file" id="csvFile" accept=".csv" class="form-field"></div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 12px;"><div style="font-weight: 500; margin-bottom: 0.5rem; color: #2c2c2a;">Expected columns (in order):</div><ul style="margin: 0; padding-left: 1.5rem; color: #888780;"><li>Prefix</li><li>Course number</li><li>Course title</li><li>Description</li><li>Credits</li><li>Rotations</li><li>Programs (separated by semicolon)</li></ul></div><div style="background: #fffaf0; border-left: 3px solid #BA7517; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 12px; color: #5f5e5a;"><strong>Note:</strong> Imported courses will have "new" status. Programs should be separated by semicolons (e.g., "Major: Art; Minor: Web Design").</div><div class="button-group"><button onclick="submitImportCSV()">Import courses</button><button class="button-transparent" onclick="closeDetail()">Cancel</button></div></div></div>`;
+  document.getElementById('detailOverlay').addEventListener('mouseup', (e) => {
+    if (!mouseDownInModal && e.target.id === 'detailOverlay') closeDetail();
+  });
+}
+
+function submitImportCSV() {
+  const fileInput = document.getElementById('csvFile');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    alert('Please select a CSV file');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const csv = e.target.result;
+      const lines = csv.split('\n').map(line => line.trim()).filter(line => line);
+      
+      if (lines.length < 2) {
+        alert('CSV file must have at least a header row and one data row');
+        return;
+      }
+      
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const expectedHeaders = ['prefix', 'course number', 'course title', 'description', 'credits', 'rotations', 'programs'];
+      
+      let importCount = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        
+        if (values.length < 5) continue;
+        
+        const course = {
+          id: generateId(),
+          prefix: (values[0] || '').toUpperCase(),
+          number: values[1] || '',
+          name: values[2] || '',
+          description: values[3] || '',
+          credits: parseInt(values[4]) || 0,
+          rotation: values[5] || '',
+          programs: values[6] ? values[6].split(';').map(p => p.trim()).filter(p => p) : [],
+          status: 'new',
+          history: [{user: currentUser, action: 'imported from CSV', timestamp: Date.now()}],
+          suggested: []
+        };
+        
+        if (course.prefix && course.number && course.name) {
+          courses.push(course);
+          importCount++;
+        }
+      }
+      
+      if (importCount === 0) {
+        alert('No valid courses found in CSV');
+        return;
+      }
+      
+      saveData();
+      closeDetail();
+      render();
+      alert(`Successfully imported ${importCount} course${importCount !== 1 ? 's' : ''}`);
+    } catch (error) {
+      alert('Error parsing CSV file: ' + error.message);
+    }
+  };
+  
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let insideQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === ',' && !insideQuotes) {
+      result.push(current.trim().replace(/^"|"$/g, ''));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim().replace(/^"|"$/g, ''));
+  return result;
+}
+
 function handleExportData() {
-  const csv = [['Prefix', 'Number', 'Name', 'Description', 'Rotation', 'Status']];
-  csv.push(...courses.map(c => [c.prefix, c.number, c.name, c.description, c.rotation, c.status]));
-  const blob = new Blob([csv.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n')], {type: 'text/csv'});
+  const csv = [['Prefix', 'Course number', 'Course title', 'Description', 'Credits', 'Rotations', 'Programs']];
+  csv.push(...courses.map(c => [c.prefix, c.number, c.name, c.description, c.credits || '', c.rotation, c.programs ? c.programs.join('; ') : '']));
+  const blob = new Blob([csv.map(row => row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',')).join('\n')], {type: 'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
