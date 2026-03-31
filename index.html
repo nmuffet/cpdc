@@ -11,7 +11,7 @@
     .app-header { margin-bottom: 1.5rem; }
     .app-title { font-size: 24px; font-weight: 500; margin: 0 0 0.25rem; color: #2c2c2a; }
     .app-subtitle { font-size: 13px; color: #888780; margin: 0 0 1rem; }
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .controls { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
     .controls button { padding: 6px 12px; font-size: 13px; border: none; border-radius: 6px; background: #2c2c2a; color: white; cursor: pointer; font-weight: 500; }
     .controls button:hover { background: #444441; }
     .table-wrapper { overflow-x: auto; border: 0.5px solid #d3d1c7; border-radius: 8px; margin-bottom: 2rem; }
@@ -93,10 +93,25 @@
     </div>
     <div class="controls">
       <button onclick="openAddCourseModal()">+ Add course</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 12px; color: #888780; text-transform: uppercase; font-weight: 500; white-space: nowrap;">Prefix</label>
+        <select id="prefixFilter" onchange="handlePrefixFilter()" style="padding: 8px 12px; border: 0.5px solid #d3d1c7; border-radius: 6px; font-size: 13px; background: white; cursor: pointer;">
+          <option value="all">All prefixes</option>
+        </select>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 12px; color: #888780; text-transform: uppercase; font-weight: 500; white-space: nowrap;">Status</label>
+        <select id="statusFilter" onchange="handleStatusFilter()" style="padding: 8px 12px; border: 0.5px solid #d3d1c7; border-radius: 6px; font-size: 13px; background: white; cursor: pointer;">
+          <option value="all">All statuses</option>
+          <option value="new">New</option>
+          <option value="review">Review</option>
+          <option value="approved">Approved</option>
+          <option value="ready">Ready</option>
+          <option value="nochange">No change</option>
+        </select>
+      </div>
       <button onclick="openImportModal()">Import CSV</button>
       <button onclick="handleExportData()">Export CSV</button>
-      <button onclick="handleFilter('all')">All courses</button>
-      <button onclick="handleFilter('pending')">Pending review</button>
     </div>
   </div>
   <div class="table-wrapper">
@@ -121,6 +136,8 @@ const USERS = ['You', 'Dr. Smith', 'Dr. Johnson', 'Dr. Lee'];
 let currentUser = USERS[0];
 let courses = [];
 let currentFilter = 'all';
+let currentPrefix = 'all';
+let currentStatus = 'all';
 let mouseDownInModal = false;
 
 async function loadData() {
@@ -177,8 +194,37 @@ function findCourse(id) {
 
 function render() {
   const tbody = document.getElementById('tableBody');
+  const prefixFilter = document.getElementById('prefixFilter');
+  
+  // Update prefix dropdown options
+  if (prefixFilter && courses.length > 0) {
+    const uniquePrefixes = [...new Set(courses.map(c => c.prefix))].sort();
+    const currentSelection = prefixFilter.value;
+    
+    // Only rebuild if prefixes have changed
+    const currentOptions = Array.from(prefixFilter.querySelectorAll('option')).map(o => o.value).slice(1); // skip 'all'
+    if (JSON.stringify(currentOptions) !== JSON.stringify(uniquePrefixes)) {
+      const selectedValue = prefixFilter.value;
+      prefixFilter.innerHTML = '<option value="all">All prefixes</option>';
+      uniquePrefixes.forEach(prefix => {
+        const option = document.createElement('option');
+        option.value = prefix;
+        option.textContent = prefix;
+        prefixFilter.appendChild(option);
+      });
+      prefixFilter.value = selectedValue;
+    }
+  }
+  
+  // Apply filters
   let filtered = courses;
-  if (currentFilter === 'pending') filtered = courses.filter(c => c.status === 'review' || c.status === 'new');
+  if (currentPrefix !== 'all') {
+    filtered = filtered.filter(c => c.prefix === currentPrefix);
+  }
+  if (currentStatus !== 'all') {
+    filtered = filtered.filter(c => c.status === currentStatus);
+  }
+  
   tbody.innerHTML = filtered.map(c => `<tr onclick="showDetail('${c.id}')"><td class="course-code">${c.prefix} ${c.number}</td><td>${c.suggested.length > 0 ? '<span class="edit-indicator"></span>' : ''}${c.name}</td><td>${c.rotation}</td><td onclick="event.stopPropagation(); toggleStatusMenu(event, '${c.id}')"><div class="status-dropdown" id="status-dropdown-${c.id}"><span class="status-badge status-${c.status}">${c.status.replace(/([A-Z])/g, ' $1').trim()}</span><div class="status-menu" id="status-menu-${c.id}"><div class="status-option" onclick="changeStatus('${c.id}', 'new')">New submission</div><div class="status-option" onclick="changeStatus('${c.id}', 'review')">To be reviewed</div><div class="status-option" onclick="changeStatus('${c.id}', 'approved')">Passed by committee</div><div class="status-option" onclick="changeStatus('${c.id}', 'ready')">Ready for registrar</div><div class="status-option" onclick="changeStatus('${c.id}', 'nochange')">No change</div></div></div></td></tr>`).join('');
 }
 
@@ -557,6 +603,18 @@ function handleExportData() {
 
 function handleFilter(filter) {
   currentFilter = filter;
+  render();
+}
+
+function handlePrefixFilter() {
+  const prefixFilter = document.getElementById('prefixFilter');
+  currentPrefix = prefixFilter.value;
+  render();
+}
+
+function handleStatusFilter() {
+  const statusFilter = document.getElementById('statusFilter');
+  currentStatus = statusFilter.value;
   render();
 }
 
