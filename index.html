@@ -261,6 +261,7 @@ function getChangedFields(current, suggestion) {
     {key: 'prefix', label: 'Prefix'},
     {key: 'number', label: 'Number'},
     {key: 'name', label: 'Course name'},
+    {key: 'credits', label: 'Credits'},
     {key: 'rotation', label: 'Rotation'}
   ];
   
@@ -448,7 +449,7 @@ function submitAddCourse() {
 
 function openImportModal() {
   const container = document.getElementById('detail');
-  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><h2 class="modal-title">Import courses from CSV</h2><button class="close-btn" onclick="closeDetail()">×</button></div><div class="form-group"><label class="form-label">CSV File</label><input type="file" id="csvFile" accept=".csv" class="form-field"></div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 12px;"><div style="font-weight: 500; margin-bottom: 0.5rem; color: #2c2c2a;">Expected columns (in order):</div><ul style="margin: 0; padding-left: 1.5rem; color: #888780;"><li>Prefix</li><li>Course number</li><li>Course title</li><li>Description</li><li>Credits</li><li>Rotations</li><li>Programs (separated by semicolon)</li></ul></div><div style="background: #fffaf0; border-left: 3px solid #BA7517; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 12px; color: #5f5e5a;"><strong>Note:</strong> Imported courses will have "new" status. Programs should be separated by semicolons (e.g., "Major: Art; Minor: Web Design").</div><div class="button-group"><button onclick="submitImportCSV()">Import courses</button><button class="button-transparent" onclick="closeDetail()">Cancel</button></div></div></div>`;
+  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><h2 class="modal-title">Import courses from CSV</h2><button class="close-btn" onclick="closeDetail()">×</button></div><div class="form-group"><label class="form-label">CSV File</label><input type="file" id="csvFile" accept=".csv" class="form-field"></div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 12px;"><div style="font-weight: 500; margin-bottom: 0.5rem; color: #2c2c2a;">Expected columns (in order):</div><ul style="margin: 0; padding-left: 1.5rem; color: #888780;"><li>Prefix</li><li>Course number</li><li>Course title</li><li>Description</li><li>Credits</li><li>Rotations</li><li>Programs (separated by semicolon)</li></ul></div><div style="background: #fffaf0; border-left: 3px solid #BA7517; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; font-size: 12px; color: #5f5e5a;"><strong>Note:</strong> Imported courses will have "new" status. Programs should be separated by semicolons (e.g., "Major: Art; Minor: Web Design"). Learning outcomes can be added by clicking into a course to edit it.</div><div class="button-group"><button onclick="submitImportCSV()">Import courses</button><button class="button-transparent" onclick="closeDetail()">Cancel</button></div></div></div>`;
   document.getElementById('detailOverlay').addEventListener('mouseup', (e) => {
     if (!mouseDownInModal && e.target.id === 'detailOverlay') closeDetail();
   });
@@ -492,6 +493,7 @@ function submitImportCSV() {
           credits: parseInt(values[4]) || 0,
           rotation: values[5] || '',
           programs: values[6] ? values[6].split(';').map(p => p.trim()).filter(p => p) : [],
+          outcomes: [],
           status: 'new',
           history: [{user: currentUser, action: 'imported from CSV', timestamp: Date.now()}],
           suggested: []
