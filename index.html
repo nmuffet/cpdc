@@ -140,6 +140,14 @@ let currentPrefix = 'all';
 let currentStatus = 'all';
 let mouseDownInModal = false;
 
+// Map programs to their department chairs (for simulation)
+const programChairs = {
+  'Major: Graphic Design': 'You',
+  'Major: Art': 'Dr. Lee',
+  'Minor: Visual Arts': 'Dr. Smith',
+  'Minor: Web Design': 'Dr. Johnson'
+};
+
 async function loadData() {
   try {
     const result = await window.storage.get(STORAGE_KEY);
@@ -153,6 +161,20 @@ async function loadData() {
     if (course.suggested && Array.isArray(course.suggested)) {
       course.suggested.forEach(sugg => {
         if (!sugg.comments) sugg.comments = [];
+        // Initialize approvals for suggestions that don't have them (backward compatibility)
+        if (!sugg.approvals && course.programs) {
+          sugg.impactedPrograms = course.programs;
+          sugg.approvals = {};
+          course.programs.forEach(program => {
+            const chair = programChairs[program];
+            sugg.approvals[program] = {
+              chair: chair,
+              status: 'pending',
+              approvedBy: null,
+              timestamp: null
+            };
+          });
+        }
       });
     }
   });
@@ -170,7 +192,7 @@ function changeUser() {
 function initializeSampleData() {
   courses = [
     { id: '1', prefix: 'DES', number: '101', name: 'Intro to Graphic Design', description: 'Basic principles of visual communication and design thinking.', credits: 3, outcomes: ['Understand design process', 'Apply visual hierarchy', 'Create design comps'], rotation: 'Fall, Spring', status: 'approved', programs: ['Major: Graphic Design', 'Minor: Visual Arts'], history: [{user: 'Dr. Smith', action: 'approved', timestamp: Date.now() - 86400000 * 30}], suggested: [] },
-    { id: '2', prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms and user interfaces.', credits: 4, outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics'], rotation: 'Spring', status: 'review', programs: ['Major: Graphic Design'], history: [{user: 'You', action: 'submitted edits', timestamp: Date.now() - 86400000 * 5}], suggested: [{prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms, interactive experiences, and user interfaces.', credits: 4, outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics', 'Test user interfaces'], rotation: 'Spring', user: 'You', timestamp: Date.now() - 86400000 * 5, justification: 'Adding user testing outcome to better align with modern UX practices.', comments: [{user: 'Dr. Smith', text: 'Good addition of user testing outcome.', timestamp: Date.now() - 86400000 * 4}]}] },
+    { id: '2', prefix: 'DES', number: '210', name: 'Web Design', description: 'Design for digital platforms and user interfaces.', credits: 4, outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics'], rotation: 'Spring', status: 'review', programs: ['Major: Graphic Design', 'Minor: Web Design'], history: [{user: 'You', action: 'submitted edits', timestamp: Date.now() - 86400000 * 5}], suggested: [{prefix: 'DES', number: '210', name: 'Interactive Web Design', description: 'Design for digital platforms, interactive experiences, and user interfaces. Includes hands-on projects with modern frameworks and interactive technologies.', credits: 4, outcomes: ['Design responsive layouts', 'Understand UX principles', 'Code HTML/CSS basics', 'Test user interfaces', 'Work with modern web frameworks'], rotation: 'Spring', user: 'You', timestamp: Date.now() - 86400000 * 5, justification: 'Renaming course to better reflect the interactive focus. Added user testing outcome and modern frameworks to better align with current industry practices.', impactedPrograms: ['Major: Graphic Design', 'Minor: Web Design'], approvals: {'Major: Graphic Design': {chair: 'You', status: 'approved', approvedBy: 'You', timestamp: Date.now() - 86400000 * 4}, 'Minor: Web Design': {chair: 'Dr. Johnson', status: 'pending', approvedBy: null, timestamp: null}}, comments: [{user: 'You', text: 'Approved for Graphic Design major. Name change better reflects the interactive design focus.', timestamp: Date.now() - 86400000 * 4}, {user: 'Dr. Smith', text: 'The name change is good. This aligns well with the web design minor curriculum.', timestamp: Date.now() - 86400000 * 3}]}] },
     { id: '3', prefix: 'DES', number: '301', name: 'Advanced Typography', description: 'Explore type as a design system. History, classification, and contemporary applications.', credits: 3, outcomes: ['Analyze typeface systems', 'Apply type to branding', 'Critique letterforms'], rotation: 'Fall', status: 'approved', programs: ['Major: Graphic Design'], history: [{user: 'Dr. Lee', action: 'approved', timestamp: Date.now() - 86400000 * 200}], suggested: [] }
   ];
   saveData();
@@ -249,9 +271,31 @@ function showDetail(courseId) {
   const course = findCourse(courseId);
   if (!course) return;
   const container = document.getElementById('detail');
+  
+  const approvalsHtml = (sugg, idx) => {
+    if (!sugg.impactedPrograms || sugg.impactedPrograms.length === 0) return '';
+    
+    const pendingApprovals = sugg.impactedPrograms.filter(p => sugg.approvals[p].status === 'pending');
+    const pendingChairs = pendingApprovals.map(p => sugg.approvals[p].chair).filter((v, i, a) => a.indexOf(v) === i);
+    
+    return `<div style="background: white; border: 0.5px solid #d3d1c7; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; font-weight: 500;">Program Approvals</div>${pendingApprovals.length > 0 ? `<span style="font-size: 11px; background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 3px; font-weight: 500;">Awaiting: ${pendingChairs.join(', ')}</span>` : ''}</div><div style="display: flex; flex-direction: column; gap: 0.75rem;">${sugg.impactedPrograms.map(program => {
+      const approval = sugg.approvals[program];
+      const statusIcon = approval.status === 'approved' ? '✓' : approval.status === 'denied' ? '✗' : '⏳';
+      const statusColor = approval.status === 'approved' ? '#155724' : approval.status === 'denied' ? '#a32d2d' : '#856404';
+      const isCurrentUserChair = programChairs[program] === currentUser;
+      const canApprove = isCurrentUserChair && approval.status === 'pending';
+      
+      return `<div style="padding: 0.75rem; background: #f9f8f6; border-radius: 4px; border-left: 3px solid ${statusColor};"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;"><div style="font-size: 13px; font-weight: 500;">${program}</div><span style="color: ${statusColor}; font-weight: bold; font-size: 14px;">${statusIcon} ${approval.status}</span></div><div style="font-size: 11px; color: #888780;">Chair: ${approval.chair}</div>${approval.approvedBy ? `<div style="font-size: 11px; color: #888780;">Approved by ${approval.approvedBy} on ${new Date(approval.timestamp).toLocaleDateString()}</div>` : ''}${canApprove ? `<div style="display: flex; gap: 8px; margin-top: 0.5rem;"><button onclick="approveProgramChange('${courseId}', ${idx}, '${program}')" style="padding: 4px 8px; font-size: 11px; background: #d4edda; color: #155724; border: none; border-radius: 4px; cursor: pointer;">Approve for ${program}</button><button onclick="denyProgramChange('${courseId}', ${idx}, '${program}')" style="padding: 4px 8px; font-size: 11px; background: #f8d7da; color: #a32d2d; border: none; border-radius: 4px; cursor: pointer;">Request changes</button></div>` : ''}</div>`;
+    }).join('')}</div></div>`;
+  };
+  
   const commentsHtml = (sugg, idx) => `<div style="background: white; border: 0.5px solid #d3d1c7; border-radius: 6px; padding: 1rem; margin-top: 1rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; margin-bottom: 0.75rem; font-weight: 500;">Comments (${sugg.comments ? sugg.comments.length : 0})</div>${sugg.comments && sugg.comments.length > 0 ? sugg.comments.map(c => `<div style="padding: 0.75rem 0; border-bottom: 0.5px solid #f1efe8;"><div><span class="user-badge">${c.user}</span> <span style="font-size: 11px; color: #888780;">${new Date(c.timestamp).toLocaleDateString()}</span></div><div style="margin-top: 0.5rem; font-size: 13px; color: #2c2c2a;">${c.text}</div></div>`).join('') : '<div style="color: #888780; font-size: 13px;">No comments yet</div>'}<div style="margin-top: 0.75rem;"><input type="text" id="comment-${courseId}-${idx}" class="form-field" placeholder="Add a comment..." style="font-size: 13px;"><button onclick="addComment('${courseId}', ${idx})" style="margin-top: 0.5rem; padding: 6px 12px; font-size: 12px;">Post comment</button></div></div>`;
   
-  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><div><h2 class="modal-title">${course.prefix} ${course.number}: ${course.name}</h2></div><button class="close-btn" onclick="closeDetail()">×</button></div><div class="tabs"><div class="tab active" onclick="switchTab(event, '${courseId}', 'current')">Edit</div>${course.suggested.length > 0 ? `<div class="tab" onclick="switchTab(event, '${courseId}', 'suggested')">Pending suggestions (${course.suggested.length})</div>` : ''}<div class="tab" onclick="switchTab(event, '${courseId}', 'history')">History</div></div><div id="currentTab-${courseId}"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"><div class="form-group"><label class="form-label">Prefix</label><input type="text" id="editPrefix-${courseId}" class="form-field" value="${course.prefix}" maxlength="4"></div><div class="form-group"><label class="form-label">Number</label><input type="text" id="editNumber-${courseId}" class="form-field" value="${course.number}" maxlength="4"></div></div><div class="form-group"><label class="form-label">Course name</label><input type="text" id="editName-${courseId}" class="form-field" value="${course.name}"></div><div class="form-group"><label class="form-label">Credits</label><input type="number" id="editCredits-${courseId}" class="form-field" value="${course.credits || ''}" min="1" max="6"></div><div class="form-group"><label class="form-label">Description</label><textarea id="editDescription-${courseId}" class="form-field">${course.description}</textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea id="editOutcomes-${courseId}" class="form-field">${course.outcomes.join('\n')}</textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" id="editRotation-${courseId}" class="form-field" value="${course.rotation}"></div><div class="form-group"><label class="form-label">Programs containing this course</label><div id="programsList-${courseId}" style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 0.5rem; min-height: 60px;">${course.programs && course.programs.length > 0 ? `<ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.programs.map((p, i) => `<li style="margin-bottom: 0.5rem;">${p} <button onclick="removeProgram('${courseId}', ${i})" style="background: transparent; color: #a32d2d; border: none; cursor: pointer; padding: 0; font-size: 12px; margin-left: 0.5rem;">remove</button></li>`).join('')}</ul>` : '<div style="color: #888780; font-size: 13px;">No programs linked yet</div>'}</div><div style="display: flex; gap: 8px;"><input type="text" id="newProgram-${courseId}" class="form-field" placeholder="e.g., Major: Graphic Design" style="flex: 1;"><button onclick="addProgram('${courseId}')" style="padding: 6px 12px; font-size: 12px;">Add program</button></div><div style="font-size: 12px; color: #888780; margin-top: 0.5rem;">Note: Detailed program management is coming in a future update</div></div><div class="button-group"><button onclick="submitEditSuggestion('${courseId}')">Save as suggestion</button><button class="button-transparent" onclick="closeDetail()">Close</button></div></div></div>${course.suggested.length > 0 ? `<div id="suggestedTab-${courseId}" style="display:none;"><p style="font-size: 13px; color: #888780; margin: 0 0 1rem;">Pending suggestions from committee members. Approve individual suggestions or deny them.</p>${course.suggested.map((sugg, idx) => `<div class="suggestion-item"><div class="suggestion-header"><div><span class="user-badge">${sugg.user}</span><span class="suggestion-meta" style="margin-left: 8px;">${new Date(sugg.timestamp).toLocaleDateString()} at ${new Date(sugg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div></div>${sugg.justification ? `<div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 500;">Justification</div><div style="font-size: 13px; color: #2c2c2a;">${sugg.justification}</div></div>` : ''}<div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Changed fields</div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 13px;">${getChangedFields(course, sugg).map(field => `<div style="margin-bottom: 0.5rem;"><strong>${field.label}:</strong> "${field.old}" → "${field.new}"</div>`).join('')}</div></div><div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Full description comparison</div><div class="comparison"><div class="comparison-panel"><div class="comparison-value">${course.description}</div></div><div class="comparison-panel suggested"><div class="comparison-value">${sugg.description}</div></div></div></div><div><div style="font-size: 12px; color: #888780; margin: 1rem 0 0.5rem 0; text-transform: uppercase; font-weight: 500;">Learning outcomes</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;"><div style="padding: 1rem; background: #f1efe8; border-radius: 6px;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div><div style="padding: 1rem; background: #e8f5e9; border-radius: 6px; border-left: 3px solid #155724;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${sugg.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div></div></div>${commentsHtml(sugg, idx)}<div class="suggestion-buttons"><button onclick="approveSuggestion('${courseId}', ${idx})">Approve</button><button class="danger" onclick="openDenyModal('${courseId}', ${idx})">Deny</button></div></div>`).join('')}</div>` : ''}<div id="historyTab-${courseId}" style="display:none;">${course.history.map(h => `<div class="history-item"><div class="history-time">${new Date(h.timestamp).toLocaleDateString()}</div><div class="history-user"><span class="user-badge">${h.user}</span></div><div class="history-action">${h.action}</div></div>`).join('')}</div></div></div>`;
+  container.innerHTML = `<div class="course-detail" id="detailOverlay"><div class="detail-modal" id="detailModal" onmousedown="mouseDownInModal = true" onmouseup="mouseDownInModal = false"><div class="modal-header"><div><h2 class="modal-title">${course.prefix} ${course.number}: ${course.name}</h2></div><button class="close-btn" onclick="closeDetail()">×</button></div><div class="tabs"><div class="tab active" onclick="switchTab(event, '${courseId}', 'current')">Edit</div>${course.suggested.length > 0 ? `<div class="tab" onclick="switchTab(event, '${courseId}', 'suggested')">Pending suggestions (${course.suggested.length})</div>` : ''}<div class="tab" onclick="switchTab(event, '${courseId}', 'history')">History</div></div><div id="currentTab-${courseId}"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;"><div class="form-group"><label class="form-label">Prefix</label><input type="text" id="editPrefix-${courseId}" class="form-field" value="${course.prefix}" maxlength="4"></div><div class="form-group"><label class="form-label">Number</label><input type="text" id="editNumber-${courseId}" class="form-field" value="${course.number}" maxlength="4"></div></div><div class="form-group"><label class="form-label">Course name</label><input type="text" id="editName-${courseId}" class="form-field" value="${course.name}"></div><div class="form-group"><label class="form-label">Credits</label><input type="number" id="editCredits-${courseId}" class="form-field" value="${course.credits || ''}" min="1" max="6"></div><div class="form-group"><label class="form-label">Description</label><textarea id="editDescription-${courseId}" class="form-field">${course.description}</textarea></div><div class="form-group"><label class="form-label">Learning outcomes (one per line)</label><textarea id="editOutcomes-${courseId}" class="form-field">${course.outcomes.join('\n')}</textarea></div><div class="form-group"><label class="form-label">Rotation</label><input type="text" id="editRotation-${courseId}" class="form-field" value="${course.rotation}"></div><div class="form-group"><label class="form-label">Programs containing this course</label><div style="padding: 1rem 0; margin-bottom: 0.5rem;">${course.programs && course.programs.length > 0 ? `<div style="display: grid; grid-template-columns: 1fr auto auto; gap: 0; border-bottom: 0.5px solid #d3d1c7; padding-bottom: 0.75rem; margin-bottom: 0.75rem;"><div style="font-size: 11px; color: #888780; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">Connected Program</div><div style="font-size: 11px; color: #888780; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px; margin-right: 3rem;">Department Chair</div><div style="font-size: 11px; color: #888780; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px; text-align: right;">Action</div></div>${course.programs.map((p, i) => {
+      const chair = programChairs[p] || 'Unassigned';
+      const statusText = chair === currentUser ? 'No action' : 'Requires approval';
+      return `<div style="display: grid; grid-template-columns: 1fr auto auto; gap: 0; padding: 1rem 0; align-items: center;"><div style="font-size: 13px; color: #2c2c2a; font-weight: 500;">${p}</div><div style="font-size: 13px; color: #5f5e5a; margin-right: 3rem;">${chair}</div><div style="font-size: 12px; color: ${chair === currentUser ? '#888780' : '#856404'}; text-align: right; margin-right: 0.5rem;">${statusText}</div><button onclick="removeProgram('${courseId}', ${i})" style="background: transparent; color: #a32d2d; border: none; cursor: pointer; padding: 0; font-size: 12px; text-align: right; width: auto;">remove</button></div>`;
+    }).join('') : '<div style="color: #888780; font-size: 13px; padding: 1rem 0;">No programs linked yet</div>'}</div><div style="display: flex; gap: 8px; margin-top: 1rem;"><input type="text" id="newProgram-${courseId}" class="form-field" placeholder="e.g., Major: Graphic Design" style="flex: 1;"><button onclick="addProgram('${courseId}')" style="padding: 6px 12px; font-size: 12px;">Add program</button></div><div style="font-size: 12px; color: #888780; margin-top: 0.5rem;">When you propose changes to this course, each program chair will need to approve them.</div></div><div class="button-group"><button onclick="submitEditSuggestion('${courseId}')">Save as suggestion</button><button class="button-transparent" onclick="closeDetail()">Close</button></div></div></div>${course.suggested.length > 0 ? `<div id="suggestedTab-${courseId}" style="display:none;"><p style="font-size: 13px; color: #888780; margin: 0 0 1rem;">Pending suggestions from committee members. Approve individual suggestions or deny them.</p>${course.suggested.map((sugg, idx) => `<div class="suggestion-item"><div class="suggestion-header"><div><span class="user-badge">${sugg.user}</span><span class="suggestion-meta" style="margin-left: 8px;">${new Date(sugg.timestamp).toLocaleDateString()} at ${new Date(sugg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div></div>${sugg.justification ? `<div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;"><div style="font-size: 12px; color: #888780; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 500;">Justification</div><div style="font-size: 13px; color: #2c2c2a;">${sugg.justification}</div></div>` : ''}<div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Changed fields</div><div style="background: #f9f8f6; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 13px;">${getChangedFields(course, sugg).map(field => `<div style="margin-bottom: 0.5rem;"><strong>${field.label}:</strong> "${field.old}" → "${field.new}"</div>`).join('')}</div></div><div><div style="font-size: 12px; color: #888780; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 500;">Full description comparison</div><div class="comparison"><div class="comparison-panel"><div class="comparison-value">${course.description}</div></div><div class="comparison-panel suggested"><div class="comparison-value">${sugg.description}</div></div></div></div><div><div style="font-size: 12px; color: #888780; margin: 1rem 0 0.5rem 0; text-transform: uppercase; font-weight: 500;">Learning outcomes</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;"><div style="padding: 1rem; background: #f1efe8; border-radius: 6px;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${course.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div><div style="padding: 1rem; background: #e8f5e9; border-radius: 6px; border-left: 3px solid #155724;"><ul style="margin: 0; padding-left: 1.5rem; font-size: 13px;">${sugg.outcomes.map(o => `<li>${o}</li>`).join('')}</ul></div></div></div>${approvalsHtml(sugg, idx)}${commentsHtml(sugg, idx)}<div class="suggestion-buttons"><button onclick="approveSuggestion('${courseId}', ${idx})">Approve</button><button class="danger" onclick="openDenyModal('${courseId}', ${idx})">Deny</button></div></div>`).join('')}</div>` : ''}<div id="historyTab-${courseId}" style="display:none;">${course.history.map(h => `<div class="history-item"><div class="history-time">${new Date(h.timestamp).toLocaleDateString()}</div><div class="history-user"><span class="user-badge">${h.user}</span></div><div class="history-action">${h.action}</div></div>`).join('')}</div></div></div>`;
   document.getElementById('detailOverlay').addEventListener('mouseup', (e) => {
     if (!mouseDownInModal && e.target.id === 'detailOverlay') closeDetail();
   });
@@ -272,6 +316,21 @@ function submitEditSuggestion(courseId) {
   }
   
   const course = findCourse(courseId);
+  
+  // Create approvals for impacted programs
+  const impactedPrograms = course.programs || [];
+  const approvals = {};
+  impactedPrograms.forEach(program => {
+    const chair = programChairs[program];
+    // Only require approval if the current user is NOT the program chair
+    approvals[program] = {
+      chair: chair,
+      status: chair === currentUser ? 'approved' : 'pending',
+      approvedBy: chair === currentUser ? currentUser : null,
+      timestamp: chair === currentUser ? Date.now() : null
+    };
+  });
+  
   const suggestion = {
     prefix: prefix.toUpperCase(),
     number: number,
@@ -283,6 +342,8 @@ function submitEditSuggestion(courseId) {
     user: currentUser,
     timestamp: Date.now(),
     justification: prompt('Why are you suggesting these changes? (optional)') || '',
+    impactedPrograms: impactedPrograms,
+    approvals: approvals,
     comments: []
   };
   
@@ -411,6 +472,49 @@ function removeProgram(courseId, idx) {
   const course = findCourse(courseId);
   if (course.programs) {
     course.programs.splice(idx, 1);
+    saveData();
+    showDetail(courseId);
+  }
+}
+
+function approveProgramChange(courseId, suggestionIdx, program) {
+  const course = findCourse(courseId);
+  const sugg = course.suggested[suggestionIdx];
+  
+  if (sugg.approvals && sugg.approvals[program]) {
+    sugg.approvals[program].status = 'approved';
+    sugg.approvals[program].approvedBy = currentUser;
+    sugg.approvals[program].timestamp = Date.now();
+    
+    sugg.comments.push({
+      user: currentUser,
+      text: `Approved this change for ${program}`,
+      timestamp: Date.now()
+    });
+    
+    saveData();
+    showDetail(courseId);
+  }
+}
+
+function denyProgramChange(courseId, suggestionIdx, program) {
+  const course = findCourse(courseId);
+  const sugg = course.suggested[suggestionIdx];
+  
+  if (sugg.approvals && sugg.approvals[program]) {
+    const feedback = prompt(`Provide feedback on why you're requesting changes for ${program}:`);
+    if (feedback === null) return; // User cancelled
+    
+    sugg.approvals[program].status = 'denied';
+    sugg.approvals[program].approvedBy = currentUser;
+    sugg.approvals[program].timestamp = Date.now();
+    
+    sugg.comments.push({
+      user: currentUser,
+      text: `Requested changes for ${program}: ${feedback}`,
+      timestamp: Date.now()
+    });
+    
     saveData();
     showDetail(courseId);
   }
